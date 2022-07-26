@@ -1,0 +1,25 @@
+{% extends "layout/base.html" %}
+{% block content %}
+<a class="button is-link mt-2" href="/add_ssh">
+    Add SSH key
+</a>
+{% for key in keys %}
+<div class="card mt-2">
+    <div class="card-content">
+        <div class="content">
+            <div class="columns">
+                <div class="column" style="word-break: break-all;">
+                    {{key.key}}
+                </div>
+                <div class="column is-narrow">
+                    <form method="POST">
+                        <input id="id" name="id" type="hidden" value="{{key.id}}">
+                        <button class="button is-danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

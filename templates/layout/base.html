@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="/static/bulma.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+              <img src="https://redrocket.club/logo.svg" width="112" height="28"> Hack-A-Sat
+            </a>
+        </div>
+
+          
+        <div class="navbar-menu">
+            {% if 'uid' in session %}
+            <div class="navbar-start">
+                <div class="navbar-item">
+                    <a href="/manage_ssh" class="navbar-item">Manage SSH keys</a>
+                </div>
+            </div>
+            <div class="navbar-start">
+                <div class="navbar-item">
+                    <a href="/get_wireguard" class="navbar-item">Get wireguard config</a>
+                </div>
+            </div>
+            {% endif %}
+            <div class="navbar-end">
+                {% if 'uid' in session %}
+                <div class="navbar-item">
+                    <a class="button navbar-item is-danger" href="/logout">
+                        logout
+                    </a>
+                </div>
+                {% else %}
+                <div class="navbar-item">
+                    <a class="button navbar-item is-success" href="/login">
+                        login
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+      {% for category,message in messages %}
+<div class="notification is-{{category}}">
+    {{message}}
+</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+{% block content %}{% endblock %}
+</div>
+</body>
+</html>
