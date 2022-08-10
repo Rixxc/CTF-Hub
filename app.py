@@ -247,14 +247,14 @@ def get_wireguard():
 @app.route('/notify')
 def ping():
     if request.headers.get('X-ALLOW-SPAM', None) != SPAM_TOKEN:
-        return {'err', 'invalid spam token'}, 401
+        return {'err': 'invalid spam token'}, 401
     msg = request.args.get('msg', None)
     if msg:
         msg = format_sse(data=msg)
         announcer.announce(msg=msg)
         return {'ok': ''}, 200
     else:
-        return {'err', 'msg missing'}, 400
+        return {'err': 'msg missing'}, 400
 
 
 @app.route('/notifications', methods=['GET'])
