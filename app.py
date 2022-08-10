@@ -15,6 +15,9 @@ app.debug = True
 app.config['SECRET_KEY'] = SECRET
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 db = SQLAlchemy(app)
 
 ### DB ###
@@ -44,7 +47,7 @@ db.create_all()
 
 OAUTH2_CLIENT_ID = os.environ['OAUTH2_CLIENT_ID']
 OAUTH2_CLIENT_SECRET = os.environ['OAUTH2_CLIENT_SECRET']
-OAUTH2_REDIRECT_URI = 'https://hack-a-sat.redrocket.club/discord/callback'
+OAUTH2_REDIRECT_URI = 'https://defcon.redrocket.club/discord/callback'
 
 API_BASE_URL = os.environ.get('API_BASE_URL', 'https://discordapp.com/api')
 AUTHORIZATION_BASE_URL = API_BASE_URL + '/oauth2/authorize'
@@ -71,50 +74,6 @@ def make_session(token=None, state=None, scope=None):
         auto_refresh_url=TOKEN_URL,
         token_updater=token_updater)
 
-### Discord Member sync ###
-
-allowed_roles = ['Hack-A-Sat', 'member']
-
-intents = discord.Intents.default()
-intents.members = True
-discord_client = discord.Client(intents=intents)
-
-manager = Manager()
-lock = manager.Lock()
-allowed_member = manager.dict()
-
-@loop(seconds=30)
-async def discord_loop():
-    global discord_client
-    global allowed_member
-    try:
-        if discord_client.is_ready():
-            with lock:
-                allowed_member.clear()
-                async for member in discord_client.guilds[0].fetch_members(limit=None):
-                    member: discord.Member = member
-
-                    roles = map(lambda role: next(filter(lambda x: x.name == role, discord_client.guilds[0].roles)), allowed_roles)
-
-                    allowed = False
-                    for role in roles:
-                        if role in member.roles:
-                            allowed = True
-                            break
-
-
-                    if allowed:
-                        allowed_member[int(member.id)] = True
-                        
-    except:
-        traceback.print_exc()
-
-
-def discord_bot():
-    global discord_client
-    discord_loop.start()
-    discord_client.run(os.environ['DISCORD_TOKEN'])
-
 #####################
 
 def is_logged_in(f):
@@ -137,7 +96,7 @@ def login():
     if 'oauth2_token' not in session:
         scope = request.args.get(
             'scope',
-            'identify')
+            'identify guilds')
         discord = make_session(scope=scope.split(' '))
         authorization_url, state = discord.authorization_url(AUTHORIZATION_BASE_URL)
         session['oauth2_state'] = state
@@ -146,10 +105,12 @@ def login():
     else:
         discord = make_session(token=session.get('oauth2_token'))
         me = discord.get(API_BASE_URL + '/users/@me').json()
-        
+        guilds = discord.get(API_BASE_URL + '/users/@me/guilds').json()
+
         allowed = False
-        with lock:
-            allowed = int(me['id']) in allowed_member.keys()
+        for guild in guilds:
+            if guild['id'] == os.environ['GUILD_ID']:
+                allowed = True
 
         if allowed:
             session['uid'] = int(me['id'])
@@ -253,18 +214,5 @@ def get_wireguard():
         flash('No more wireguard configs left', 'danger')
         return redirect('/home')
 
-def start_flask(am, l):
-    global app
-    global allowed_member
-    global lock
-
-    allowed_member = am
-    lock = l
-    
-    app.run(host='127.0.0.1', port=1234)
-
 if __name__ == '__main__':
-    t = Process(target=start_flask, args=(allowed_member,lock))
-    t.start()
-
-    discord_bot()
+    app.run(host='127.0.0.1', port=1234)
