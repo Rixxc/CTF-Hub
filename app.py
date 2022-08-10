@@ -191,7 +191,7 @@ def get_ssh():
     for key in SSHKey.query.all():
         ret += f"{key.key} {key.name}\n"
     
-    return ret
+    return ret, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route('/get_wireguard')
 @is_logged_in
