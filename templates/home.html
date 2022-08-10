@@ -1,4 +1,34 @@
 {% extends "layout/base.html" %}
 {% block content %}
 <h1 class="title">Hi {{session['username']}}</h1>
+
+<a class="button is-link mt-2" href="/add_message">
+    Add message
+</a>
+{% for message in messages %}
+<div class="card mt-2">
+    <div class="card-content">
+        <div class="content">
+            <div class="columns">
+                <div class="column" style="word-break: break-all;">
+                    {{message.message | safe}}
+                </div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <p class="subtitle">
+                        {{message.username}}
+                    </p>
+                </div>
+                <div class="column is-narrow">
+                    <form method="POST">
+                        <input id="id" name="id" type="hidden" value="{{message.id}}">
+                        <button class="button is-danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

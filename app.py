@@ -43,6 +43,15 @@ class Wireguard(db.Model):
         self.filename = filename
         self.uid = uid
 
+class HomeMessage(db.Model):
+    id = db.Column(db.BigInteger().with_variant(db.Integer, 'sqlite'), primary_key=True)
+    message = db.Column(db.Text, nullable=False)
+    username = db.Column(db.Text, nullable=False)
+
+    def __init__(self, message, username):
+        self.message = message
+        self.username = username
+
 db.create_all()
 
 ### Discord OAUTH ###
@@ -167,10 +176,25 @@ def callback():
     session['oauth2_token'] = token
     return redirect('/login')
 
-@app.route('/home')
+@app.route('/home', methods=['GET', 'POST'])
 @is_logged_in
 def home():
-    return render_template('home.html')
+    if request.method == "GET":
+        messages = HomeMessage.query.all()
+        return render_template('home.html', messages=messages)
+    try:
+        message_id = request.form['id']
+
+        message = HomeMessage.query.filter_by(id=message_id).first()
+        if message:
+            db.session.delete(message)
+            db.session.commit()
+    except:
+        flash('Something went wrong', 'danger')
+        return redirect('/home')
+
+    flash('Message deleted', 'success')
+    return redirect('/home')
 
 @app.route('/add_ssh', methods=['GET', 'POST'])
 @is_logged_in
@@ -222,6 +246,25 @@ def get_ssh():
         ret += f"{key.key} {key.name}\n"
     
     return ret, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
+@app.route('/add_message', methods=['GET', 'POST'])
+@is_logged_in
+def add_message():
+    if request.method == "GET":
+        return render_template('add_message.html')
+    try:
+        message_text = request.form['message']
+
+        message = HomeMessage(message_text, session['username'])
+        db.session.add(message)
+        db.session.commit()
+    except:
+        traceback.print_exc()
+        flash('Something went wrong', 'danger')
+        return redirect('/home')
+
+    flash('Message added', 'success')
+    return redirect('/home')
 
 @app.route('/get_wireguard')
 @is_logged_in
