@@ -180,7 +180,7 @@ def callback():
 @is_logged_in
 def home():
     if request.method == "GET":
-        messages = HomeMessage.query.all()
+        messages = HomeMessage.query.order_by(HomeMessage.id.asc()).all()
         return render_template('home.html', messages=messages)
     try:
         message_id = request.form['id']

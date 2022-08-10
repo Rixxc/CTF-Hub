@@ -1,10 +1,6 @@
 {% extends "layout/base.html" %}
 {% block content %}
 <h1 class="title">Hi {{session['username']}}</h1>
-
-<a class="button is-link mt-2" href="/add_message">
-    Add message
-</a>
 {% for message in messages %}
 <div class="card mt-2">
     <div class="card-content">
@@ -31,4 +27,7 @@
     </div>
 </div>
 {% endfor %}
+<a class="button is-link mt-2" href="/add_message">
+    Add message
+</a>
 {% endblock %}
