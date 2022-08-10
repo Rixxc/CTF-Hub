@@ -12,7 +12,7 @@
                     {{key.key}}
                 </div>
                 <div class="column is-narrow">
-                    <form method="POST">
+                    <form method="POST" onsubmit="return confirm('Do you really want to delete this SSH key?');">
                         <input id="id" name="id" type="hidden" value="{{key.id}}">
                         <button class="button is-danger" type="submit">Delete</button>
                     </form>

@@ -17,7 +17,7 @@
                     </p>
                 </div>
                 <div class="column is-narrow">
-                    <form method="POST">
+                    <form method="POST" onsubmit="return confirm('Do you really want to delete this message?');">
                         <input id="id" name="id" type="hidden" value="{{message.id}}">
                         <button class="button is-danger" type="submit">Delete</button>
                     </form>
@@ -27,6 +27,25 @@
     </div>
 </div>
 {% endfor %}
+<div class="card mt-2">
+    <div class="card-content">
+        <div class="content">
+            <div class="columns">
+                <div class="column" style="word-break: break-all;">
+                    To send notifications via CTF-HUB you have to send a POST request to /notify with the message as the post parameter "msg".<br>
+                    In addition you have to set the X-ALLOW-SPAM header to "{{spam_token}}".
+                </div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <p class="subtitle">
+                        Rixxc
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <a class="button is-link mt-2" href="/add_message">
     Add message
 </a>

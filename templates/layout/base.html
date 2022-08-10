@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <link href="/static/bulma.min.css" rel="stylesheet">
+    <title>CTF-Hub</title>
 </head>
 <script type="text/javascript" charset="utf-8">
     async function requestNotificationPermission() {
@@ -14,6 +15,9 @@
         const greeting = new Notification('Defcon 2022',{
             body: event.data
         });
+        if(window.location.pathname === '/view_notifications') {
+            setTimeout(() => {location.reload();}, 5000);
+        }
     }
 
 </script>
@@ -28,6 +32,11 @@
           
         <div class="navbar-menu">
             {% if 'uid' in session %}
+            <div class="navbar-start">
+                <div class="navbar-item">
+                    <a href="/view_notifications" class="navbar-item">View notifications</a>
+                </div>
+            </div>
             <div class="navbar-start">
                 <div class="navbar-item">
                     <a href="/manage_ssh" class="navbar-item">Manage SSH keys</a>

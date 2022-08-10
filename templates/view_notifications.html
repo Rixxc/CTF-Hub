@@ -1,0 +1,17 @@
+{% extends "layout/base.html" %}
+{% block content %}
+{% for notification in notifications %}
+<div class="card mt-2">
+    <div class="card-content">
+        <div class="content">
+            <div class="columns">
+                <div class="column" style="word-break: break-all;">
+                    {{notification.notification}}
+                </div>
+            </div>
+            <time>{{notification.time}}</time>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

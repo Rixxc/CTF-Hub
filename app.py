@@ -10,6 +10,7 @@ import traceback
 from functools import wraps
 from secret import SECRET, SPAM_TOKEN
 import queue
+import datetime
 
 app = Flask(__name__, static_url_path='/static')
 app.debug = True
@@ -51,6 +52,15 @@ class HomeMessage(db.Model):
     def __init__(self, message, username):
         self.message = message
         self.username = username
+
+class Notification(db.Model):
+    id = db.Column(db.BigInteger().with_variant(db.Integer, 'sqlite'), primary_key=True)
+    notification = db.Column(db.Text, nullable=False)
+    time = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self, notification):
+        self.notification = notification
+        self.time = datetime.datetime.now()
 
 db.create_all()
 
@@ -181,7 +191,7 @@ def callback():
 def home():
     if request.method == "GET":
         messages = HomeMessage.query.order_by(HomeMessage.id.asc()).all()
-        return render_template('home.html', messages=messages)
+        return render_template('home.html', messages=messages, spam_token=SPAM_TOKEN)
     try:
         message_id = request.form['id']
 
@@ -287,11 +297,20 @@ def get_wireguard():
         flash('No more wireguard configs left', 'danger')
         return redirect('/home')
 
-@app.route('/notify')
+@app.route('/notify', methods=['POST'])
 def ping():
     if request.headers.get('X-ALLOW-SPAM', None) != SPAM_TOKEN:
         return {'err': 'invalid spam token'}, 401
-    msg = request.args.get('msg', None)
+    
+    msg = request.form.get('msg', None)
+    
+    try:
+        notification = Notification(msg)
+        db.session.add(notification)
+        db.session.commit()
+    except:
+        return {'err', 'something went wrong'}, 500
+    
     if msg:
         msg = format_sse(data=msg)
         announcer.announce(msg=msg)
@@ -303,7 +322,6 @@ def ping():
 @app.route('/notifications', methods=['GET'])
 @is_logged_in
 def listen():
-
     def stream():
         messages = announcer.listen()
         while True:
@@ -311,6 +329,13 @@ def listen():
             yield msg
 
     return Response(stream(), mimetype='text/event-stream')
+
+
+@app.route('/view_notifications', methods=['GET'])
+@is_logged_in
+def view_notifications():
+    notifications = Notification.query.order_by(Notification.time.desc()).all()
+    return render_template('view_notifications.html', notifications=notifications)    
 
 
 if __name__ == '__main__':
