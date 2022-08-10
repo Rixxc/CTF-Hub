@@ -2,13 +2,14 @@ from inspect import trace
 import os
 from discord.ext.tasks import loop
 from multiprocessing import Process, Manager
-from flask import Flask, session, redirect, request, abort, render_template, flash, send_from_directory
+from flask import Flask, session, redirect, request, abort, render_template, flash, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
 from requests_oauthlib import OAuth2Session
 import discord
 import traceback
 from functools import wraps
-from secret import SECRET
+from secret import SECRET, SPAM_TOKEN
+import queue
 
 app = Flask(__name__, static_url_path='/static')
 app.debug = True
@@ -18,6 +19,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 db = SQLAlchemy(app)
 
 ### DB ###
@@ -73,6 +75,34 @@ def make_session(token=None, state=None, scope=None):
         },
         auto_refresh_url=TOKEN_URL,
         token_updater=token_updater)
+
+### SSE Messagequeue ###
+
+class MessageAnnouncer:
+
+    def __init__(self):
+        self.listeners = []
+
+    def listen(self):
+        q = queue.Queue(maxsize=5)
+        self.listeners.append(q)
+        return q
+
+    def announce(self, msg):
+        for i in reversed(range(len(self.listeners))):
+            try:
+                self.listeners[i].put_nowait(msg)
+            except queue.Full:
+                del self.listeners[i]
+
+
+def format_sse(data: str, event=None) -> str:
+    msg = f'data: {data}\n\n'
+    if event is not None:
+        msg = f'event: {event}\n{msg}'
+    return msg
+
+announcer = MessageAnnouncer()
 
 #####################
 
@@ -214,5 +244,31 @@ def get_wireguard():
         flash('No more wireguard configs left', 'danger')
         return redirect('/home')
 
+@app.route('/notify')
+def ping():
+    if request.headers.get('X-ALLOW-SPAM', None) != SPAM_TOKEN:
+        return {'err', 'invalid spam token'}, 401
+    msg = request.args.get('msg', None)
+    if msg:
+        msg = format_sse(data=msg)
+        announcer.announce(msg=msg)
+        return {'ok': ''}, 200
+    else:
+        return {'err', 'msg missing'}, 400
+
+
+@app.route('/notifications', methods=['GET'])
+@is_logged_in
+def listen():
+
+    def stream():
+        messages = announcer.listen()
+        while True:
+            msg = messages.get()
+            yield msg
+
+    return Response(stream(), mimetype='text/event-stream')
+
+
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=1234)
+    app.run(host='127.0.0.1', port=1234, threaded=True)

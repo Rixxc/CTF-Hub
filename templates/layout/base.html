@@ -3,6 +3,20 @@
 <head>
     <link href="/static/bulma.min.css" rel="stylesheet">
 </head>
+<script type="text/javascript" charset="utf-8">
+    async function requestNotificationPermission() {
+        let permission = await Notification.requestPermission();
+    }
+
+    const evtSource = new EventSource("/notifications", { withCredentials: true } );
+    evtSource.onmessage = (event) => {
+        console.log(`message: ${event.data}`);
+        const greeting = new Notification('Defcon 2022',{
+            body: event.data
+        });
+    }
+
+</script>
 <body>
     <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
@@ -28,14 +42,17 @@
             <div class="navbar-end">
                 {% if 'uid' in session %}
                 <div class="navbar-item">
+                    <button class="button navbar-item is-success" onclick="requestNotificationPermission()">Request notification permission</button>
+                </div>
+                <div class="navbar-item">
                     <a class="button navbar-item is-danger" href="/logout">
-                        logout
+                        Logout
                     </a>
                 </div>
                 {% else %}
                 <div class="navbar-item">
                     <a class="button navbar-item is-success" href="/login">
-                        login
+                        Login
                     </a>
                 </div>
                 {% endif %}
