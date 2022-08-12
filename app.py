@@ -292,7 +292,7 @@ def get_wireguard():
             db.session.commit()
             return send_from_directory('wireguard', file)
         except:
-            continue
+            db.session.rollback()
     else:
         flash('No more wireguard configs left', 'danger')
         return redirect('/home')
