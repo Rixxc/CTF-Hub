@@ -9,6 +9,7 @@ flask-sqlalchemy = "*"
 requests-oauthlib = "*"
 flask = "*"
 gunicorn = "*"
+requests = "*"
 
 [dev-packages]
 

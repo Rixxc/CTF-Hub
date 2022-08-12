@@ -11,6 +11,7 @@ from functools import wraps
 from secret import SECRET, SPAM_TOKEN
 import queue
 import datetime
+import requests
 
 app = Flask(__name__, static_url_path='/static')
 app.debug = True
@@ -309,11 +310,20 @@ def ping():
         db.session.add(notification)
         db.session.commit()
     except:
-        return {'err', 'something went wrong'}, 500
+        return {'err': 'something went wrong'}, 500
     
     if msg:
-        msg = format_sse(data=msg)
-        announcer.announce(msg=msg)
+        msg_sse = format_sse(data=msg)
+        announcer.announce(msg=msg_sse)
+
+        # Trigger Discord webhook
+        resp = requests.post(
+            os.environ['DISCORD_WEBHOOK_URL'] + '?wait=true',
+            data={"content": msg},
+        )
+        if resp.status_code != 200:
+            return {'err': f'Discord returned code {resp.status_code}: {resp.text}'}, 500
+
         return {'ok': ''}, 200
     else:
         return {'err': 'msg missing'}, 400
