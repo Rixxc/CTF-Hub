@@ -229,10 +229,10 @@ def add_ssh():
     if request.method == "GET":
         return render_template('add_ssh.html')
     try:
-        key = request.form['key']
+        key = request.form['key'].strip()
 
-        if not key.startswith('ssh-') or '\r' in key or '\n' in key:
-            flash('This does not look like a valid SSH key', 'danger')
+        if '\r' in key or '\n' in key:
+            flash('Your key is not allowed to contain newlines', 'danger')
             return redirect('/add_ssh')
 
         ssh_key = SSHKey(session['uid'], session['username'], key)
