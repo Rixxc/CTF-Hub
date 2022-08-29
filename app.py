@@ -16,7 +16,7 @@ import requests
 app = Flask(__name__, static_url_path='/static')
 app.debug = True
 app.config['SECRET_KEY'] = SECRET
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/db.sqlite'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -69,7 +69,7 @@ db.create_all()
 
 OAUTH2_CLIENT_ID = os.environ['OAUTH2_CLIENT_ID']
 OAUTH2_CLIENT_SECRET = os.environ['OAUTH2_CLIENT_SECRET']
-OAUTH2_REDIRECT_URI = 'https://defcon.redrocket.club/discord/callback'
+OAUTH2_REDIRECT_URI = os.environ['OAUTH2_REDIRECT_URI']
 
 API_BASE_URL = os.environ.get('API_BASE_URL', 'https://discordapp.com/api')
 AUTHORIZATION_BASE_URL = API_BASE_URL + '/oauth2/authorize'
@@ -290,7 +290,7 @@ def get_wireguard():
     if config:
         return send_from_directory('wireguard', config.filename)
 
-    config_files = os.listdir('./wireguard')
+    config_files = os.listdir('/wireguard')
 
     for file in config_files:
         try:
@@ -355,4 +355,4 @@ def view_notifications():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=1234, threaded=True)
+    app.run(host='0.0.0.0', port=1234, threaded=True)
