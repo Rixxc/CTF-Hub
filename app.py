@@ -141,7 +141,8 @@ def is_logged_in(f):
         if 'uid' in session:
             return f(*args, **kwargs)
         else:
-            abort(403)
+            flash('You have to log in to perform this action', 'danger')
+            return redirect('/')
 
     return wrap
 
