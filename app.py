@@ -189,6 +189,15 @@ def login():
             return redirect('/')
 
 
+@app.route('/debug')
+def debug():
+    if 'DEBUG' in os.environ:
+        session['uid'] = 1
+        session['username'] = 'Debug'
+        return redirect('/home')
+    abort(403)
+
+
 @app.route('/logout')
 def logout():
     session.clear()
