@@ -5,6 +5,7 @@ import traceback
 from functools import wraps
 
 import requests
+import markdown
 from flask import Flask, session, redirect, request, abort, render_template, flash, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
 from requests_oauthlib import OAuth2Session
@@ -19,6 +20,11 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 db = SQLAlchemy(app)
+
+MARKDOWN_EXTENSIONS = ['pymdownx.magiclink', 'pymdownx.tabbed', 'pymdownx.arithmatex', 'pymdownx.details',
+                       'pymdownx.emoji', 'pymdownx.highlight', 'pymdownx.inlinehilite', 'pymdownx.keys',
+                       'pymdownx.progressbar', 'pymdownx.smartsymbols', 'pymdownx.snippets', 'pymdownx.tabbed',
+                       'pymdownx.tasklist', 'pymdownx.tilde']
 
 
 ### DB ###
@@ -207,6 +213,8 @@ def callback():
 def home():
     if request.method == "GET":
         messages = HomeMessage.query.order_by(HomeMessage.id.asc()).all()
+        for m in messages:
+            m.message = markdown.markdown(m.message, extensions=MARKDOWN_EXTENSIONS)
         return render_template('home.html', messages=messages, spam_token=os.environ.get("SPAM_TOKEN", None))
     try:
         message_id = request.form['id']
