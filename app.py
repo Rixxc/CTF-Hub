@@ -1,21 +1,17 @@
-from inspect import trace
+import datetime
 import os
-from discord.ext.tasks import loop
-from multiprocessing import Process, Manager
+import queue
+import traceback
+from functools import wraps
+
+import requests
 from flask import Flask, session, redirect, request, abort, render_template, flash, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
 from requests_oauthlib import OAuth2Session
-import discord
-import traceback
-from functools import wraps
-from secret import SECRET, SPAM_TOKEN
-import queue
-import datetime
-import requests
 
 app = Flask(__name__, static_url_path='/static')
-app.debug = True
-app.config['SECRET_KEY'] = SECRET
+app.debug = 'DEBUG' in os.environ
+app.config['SECRET_KEY'] = os.urandom(32)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/db.sqlite'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -23,6 +19,7 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 db = SQLAlchemy(app)
+
 
 ### DB ###
 
@@ -36,7 +33,8 @@ class SSHKey(db.Model):
         self.uid = uid
         self.name = name
         self.key = key
-        
+
+
 class Wireguard(db.Model):
     filename = db.Column(db.String(100), primary_key=True)
     uid = db.Column(db.BigInteger, nullable=False)
@@ -44,6 +42,7 @@ class Wireguard(db.Model):
     def __init__(self, filename, uid):
         self.filename = filename
         self.uid = uid
+
 
 class HomeMessage(db.Model):
     id = db.Column(db.BigInteger().with_variant(db.Integer, 'sqlite'), primary_key=True)
@@ -54,6 +53,7 @@ class HomeMessage(db.Model):
         self.message = message
         self.username = username
 
+
 class Notification(db.Model):
     id = db.Column(db.BigInteger().with_variant(db.Integer, 'sqlite'), primary_key=True)
     notification = db.Column(db.Text, nullable=False)
@@ -62,6 +62,7 @@ class Notification(db.Model):
     def __init__(self, notification):
         self.notification = notification
         self.time = datetime.datetime.now()
+
 
 db.create_all()
 
@@ -96,10 +97,10 @@ def make_session(token=None, state=None, scope=None):
         auto_refresh_url=TOKEN_URL,
         token_updater=token_updater)
 
+
 ### SSE Messagequeue ###
 
 class MessageAnnouncer:
-
     def __init__(self):
         self.listeners = []
 
@@ -122,7 +123,9 @@ def format_sse(data: str, event=None) -> str:
         msg = f'event: {event}\n{msg}'
     return msg
 
+
 announcer = MessageAnnouncer()
+
 
 #####################
 
@@ -133,13 +136,16 @@ def is_logged_in(f):
             return f(*args, **kwargs)
         else:
             abort(403)
+
     return wrap
+
 
 @app.route('/')
 def index():
     if 'username' in session:
         return redirect('/home')
     return render_template('index.html')
+
 
 @app.route('/login')
 def login():
@@ -176,10 +182,12 @@ def login():
             flash('You are not allowed to log in', 'danger')
             return redirect('/')
 
+
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
 
 @app.route('/discord/callback')
 def callback():
@@ -192,6 +200,7 @@ def callback():
         authorization_response=request.url)
     session['oauth2_token'] = token
     return redirect('/login')
+
 
 @app.route('/home', methods=['GET', 'POST'])
 @is_logged_in
@@ -212,6 +221,7 @@ def home():
 
     flash('Message deleted', 'success')
     return redirect('/home')
+
 
 @app.route('/add_ssh', methods=['GET', 'POST'])
 @is_logged_in
@@ -235,6 +245,7 @@ def add_ssh():
     flash('SSH key added', 'success')
     return redirect('/manage_ssh')
 
+
 @app.route('/manage_ssh', methods=['GET', 'POST'])
 @is_logged_in
 def manage_ssh():
@@ -255,14 +266,16 @@ def manage_ssh():
     flash('SSH key deleted', 'success')
     return redirect('/manage_ssh')
 
+
 @app.route('/get_ssh')
 def get_ssh():
     ret = ""
 
     for key in SSHKey.query.all():
         ret += f"{key.key} {key.name}\n"
-    
+
     return ret, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
 
 @app.route('/add_message', methods=['GET', 'POST'])
 @is_logged_in
@@ -282,6 +295,7 @@ def add_message():
 
     flash('Message added', 'success')
     return redirect('/home')
+
 
 @app.route('/get_wireguard')
 @is_logged_in
@@ -304,24 +318,28 @@ def get_wireguard():
         flash('No more wireguard configs left', 'danger')
         return redirect('/home')
 
+
 @app.route('/notify', methods=['POST'])
 def ping():
-    if request.headers.get('X-ALLOW-SPAM', None) != SPAM_TOKEN:
+    if request.headers.get('X-ALLOW-SPAM', "") != os.environ.get("SPAM_TOKEN", None):
         return {'err': 'invalid spam token'}, 401
-    
+
     msg = request.form.get('msg', None)
-    
+
+    if not msg:
+        return {'err': 'msg missing'}, 400
+
     try:
         notification = Notification(msg)
         db.session.add(notification)
         db.session.commit()
     except:
         return {'err': 'something went wrong'}, 500
-    
-    if msg:
-        msg_sse = format_sse(data=msg)
-        announcer.announce(msg=msg_sse)
 
+    msg_sse = format_sse(data=msg)
+    announcer.announce(msg=msg_sse)
+
+    if 'DISCORD_WEBHOOK_URL' in os.environ:
         # Trigger Discord webhook
         resp = requests.post(
             os.environ['DISCORD_WEBHOOK_URL'] + '?wait=true',
@@ -330,9 +348,7 @@ def ping():
         if resp.status_code != 200:
             return {'err': f'Discord returned code {resp.status_code}: {resp.text}'}, 500
 
-        return {'ok': ''}, 200
-    else:
-        return {'err': 'msg missing'}, 400
+    return {'ok': ''}, 200
 
 
 @app.route('/notifications', methods=['GET'])
@@ -351,7 +367,7 @@ def listen():
 @is_logged_in
 def view_notifications():
     notifications = Notification.query.order_by(Notification.time.desc()).all()
-    return render_template('view_notifications.html', notifications=notifications)    
+    return render_template('view_notifications.html', notifications=notifications)
 
 
 if __name__ == '__main__':
