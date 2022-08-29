@@ -10,6 +10,8 @@ services:
       - OAUTH2_REDIRECT_URI=http://127.0.0.1:1234/discord/callback
       - GUILD_ID=
       - ROLE_ID=
+      - SPAM_TOKEN=
+      - DISCORD_WEBHOOK_URL=
     volumes:
       - db:/db/
       - ./wireguard:/wireguard
