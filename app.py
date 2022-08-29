@@ -146,7 +146,7 @@ def login():
     if 'oauth2_token' not in session:
         scope = request.args.get(
             'scope',
-            'identify guilds')
+            'identify guilds guilds.members.read')
         discord = make_session(scope=scope.split(' '))
         authorization_url, state = discord.authorization_url(AUTHORIZATION_BASE_URL)
         session['oauth2_state'] = state
@@ -160,7 +160,13 @@ def login():
         allowed = False
         for guild in guilds:
             if guild['id'] == os.environ['GUILD_ID']:
-                allowed = True
+                if os.environ["ROLE_ID"]:
+                    user_guild = discord.get(API_BASE_URL + f'/users/@me/guilds/{os.environ["GUILD_ID"]}/member').json()
+
+                    if os.environ["ROLE_ID"] in user_guild["roles"]:
+                        allowed = True
+                else:
+                    allowed = True
 
         if allowed:
             session['uid'] = int(me['id'])
