@@ -225,7 +225,7 @@ def home():
         messages = HomeMessage.query.order_by(HomeMessage.id.asc()).all()
         for m in messages:
             m.message = markdown.markdown(m.message, extensions=MARKDOWN_EXTENSIONS)
-        return render_template('home.html', messages=messages, spam_token=os.environ.get("SPAM_TOKEN", None))
+        return render_template('home.html', messages=messages, spam_token=os.environ['SPAM_TOKEN'])
     try:
         message_id = request.form['id']
 
@@ -339,7 +339,7 @@ def get_wireguard():
 
 @app.route('/notify', methods=['POST'])
 def ping():
-    if request.headers.get('X-ALLOW-SPAM', "") != os.environ.get("SPAM_TOKEN", None):
+    if os.environ['SPAM_TOKEN'] and request.headers.get('X-ALLOW-SPAM', "") != os.environ['SPAM_TOKEN']:
         return {'err': 'invalid spam token'}, 401
 
     msg = request.form.get('msg', None)
@@ -357,7 +357,7 @@ def ping():
     msg_sse = format_sse(data=msg)
     announcer.announce(msg=msg_sse)
 
-    if 'DISCORD_WEBHOOK_URL' in os.environ:
+    if os.environ['DISCORD_WEBHOOK_URL']:
         # Trigger Discord webhook
         resp = requests.post(
             os.environ['DISCORD_WEBHOOK_URL'] + '?wait=true',
