@@ -339,7 +339,7 @@ def get_wireguard():
 
 @app.route('/notify', methods=['POST'])
 def ping():
-    if os.environ['SPAM_TOKEN'] and request.headers.get('X-ALLOW-SPAM', "") != os.environ['SPAM_TOKEN']:
+    if not os.environ['SPAM_TOKEN'] or request.headers.get('X-ALLOW-SPAM', None) != os.environ['SPAM_TOKEN']:
         return {'err': 'invalid spam token'}, 401
 
     msg = request.form.get('msg', None)
