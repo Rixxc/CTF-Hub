@@ -9,28 +9,33 @@
         let permission = await Notification.requestPermission();
     }
 
-    const evtSource = new EventSource("/notifications", { withCredentials: true } );
+    const evtSource = new EventSource("{{ url_for("sse.stream", channel="notifications") }}");
     evtSource.onmessage = (event) => {
         console.log(`message: ${event.data}`);
-        const greeting = new Notification('Defcon 2022',{
+        const greeting = new Notification('Defcon 2023',{
             body: event.data
         });
         if(window.location.pathname === '/view_notifications') {
             setTimeout(() => {location.reload();}, 5000);
         }
     }
-
 </script>
 <body>
     <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
-            <a class="navbar-item" href="/">
+            <a class="navbar-item" href="{{ '/home' if 'name' in session else '/' }}">
               <img src="https://redrocket.club/logo.svg" width="112" height="28"> Defcon CTF
+            </a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false"
+               data-target="navbar">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
             </a>
         </div>
 
           
-        <div class="navbar-menu">
+        <div class="navbar-menu" id="navbar">
             {% if 'uid' in session %}
             <div class="navbar-start">
                 <div class="navbar-item">
@@ -68,17 +73,58 @@
             </div>
         </div>
     </nav>
+     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Get all "navbar-burger" elements
+            const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+
+            // Add a click event on each of them
+            $navbarBurgers.forEach(el => {
+                el.addEventListener('click', () => {
+
+                    // Get the target from the "data-target" attribute
+                    const target = el.dataset.target;
+                    const $target = document.getElementById(target);
+
+                    // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+                    el.classList.toggle('is-active');
+                    $target.classList.toggle('is-active');
+
+                });
+            });
+
+        });
+    </script>
 <div class="container">
-    {% with messages = get_flashed_messages(with_categories=True) %}
-    {% if messages %}
-      {% for category,message in messages %}
-<div class="notification is-{{category}}">
-    {{message}}
-</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-{% block content %}{% endblock %}
+    <section>
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                {% for category,message in messages %}
+                    <div class="notification is-{{ category }}" style="position: fixed; right: 1rem; bottom: 0;">
+                        <button class="delete"></button>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+                    const $notification = $delete.parentNode;
+
+                    $delete.addEventListener('click', () => {
+                        $notification.parentNode.removeChild($notification);
+                    });
+
+                    setTimeout(() => {
+                        $notification.parentNode.removeChild($notification);
+                    }, 5000);
+                });
+            });
+        </script>
+        {% block content %}{% endblock %}
+    </section>
 </div>
 </body>
 </html>

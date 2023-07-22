@@ -3,17 +3,26 @@ services:
   hub:
     build: .
     ports:
-      - "1234:1234"
+      - "0.0.0.0:1234:1234"
     environment:
       - OAUTH2_CLIENT_ID=
       - OAUTH2_CLIENT_SECRET=
       - OAUTH2_REDIRECT_URI=http://127.0.0.1:1234/discord/callback
       - GUILD_ID=
       - ROLE_ID=
-      - SPAM_TOKEN=
+      - SPAM_TOKEN=Test
       - DISCORD_WEBHOOK_URL=
+      - DEBUG=
     volumes:
-      - db:/db/
       - ./wireguard:/wireguard
+  database:
+    image: 'postgres:latest'
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: cybercyber
+      POSTGRES_DB: project
+  redis:
+    image: redis:6.2-alpine
 volumes:
   db:

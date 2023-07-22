@@ -4,20 +4,32 @@ import queue
 import traceback
 from functools import wraps
 
-import requests
 import markdown
-from flask import Flask, session, redirect, request, abort, render_template, flash, send_from_directory, Response
+import requests
+from flask import Flask, Response, abort, flash, redirect, render_template, request, send_from_directory, session
 from flask_sqlalchemy import SQLAlchemy
+from flask_sse import sse
 from requests_oauthlib import OAuth2Session
 
 app = Flask(__name__, static_url_path='/static')
+
 app.debug = 'DEBUG' in os.environ
-app.config['SECRET_KEY'] = os.urandom(32)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/db.sqlite'
+
+with open('secret', 'rb') as f:
+    app.config['SECRET_KEY'] = f.read()
+
+if app.debug:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:cybercyber@database/project'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+app.config["REDIS_URL"] = "redis://redis"
+app.register_blueprint(sse, url_prefix='/notifications')
 
 db = SQLAlchemy(app)
 
@@ -70,8 +82,6 @@ class Notification(db.Model):
         self.time = datetime.datetime.now()
 
 
-db.create_all()
-
 ### Discord OAUTH ###
 
 OAUTH2_CLIENT_ID = os.environ['OAUTH2_CLIENT_ID']
@@ -102,35 +112,6 @@ def make_session(token=None, state=None, scope=None):
         },
         auto_refresh_url=TOKEN_URL,
         token_updater=token_updater)
-
-
-### SSE Messagequeue ###
-
-class MessageAnnouncer:
-    def __init__(self):
-        self.listeners = []
-
-    def listen(self):
-        q = queue.Queue(maxsize=5)
-        self.listeners.append(q)
-        return q
-
-    def announce(self, msg):
-        for i in reversed(range(len(self.listeners))):
-            try:
-                self.listeners[i].put_nowait(msg)
-            except queue.Full:
-                del self.listeners[i]
-
-
-def format_sse(data: str, event=None) -> str:
-    msg = f'data: {data}\n\n'
-    if event is not None:
-        msg = f'event: {event}\n{msg}'
-    return msg
-
-
-announcer = MessageAnnouncer()
 
 
 #####################
@@ -192,7 +173,7 @@ def login():
 
 @app.route('/debug')
 def debug():
-    if 'DEBUG' in os.environ:
+    if app.debug:
         session['uid'] = 1
         session['username'] = 'Debug'
         return redirect('/home')
@@ -354,8 +335,7 @@ def ping():
     except:
         return {'err': 'something went wrong'}, 500
 
-    msg_sse = format_sse(data=msg)
-    announcer.announce(msg=msg_sse)
+    sse.publish(msg, channel='notifications')
 
     if os.environ['DISCORD_WEBHOOK_URL']:
         # Trigger Discord webhook
@@ -367,18 +347,6 @@ def ping():
             return {'err': f'Discord returned code {resp.status_code}: {resp.text}'}, 500
 
     return {'ok': ''}, 200
-
-
-@app.route('/notifications', methods=['GET'])
-@is_logged_in
-def listen():
-    def stream():
-        messages = announcer.listen()
-        while True:
-            msg = messages.get()
-            yield msg
-
-    return Response(stream(), mimetype='text/event-stream')
 
 
 @app.route('/view_notifications', methods=['GET'])
