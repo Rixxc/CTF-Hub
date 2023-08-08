@@ -118,6 +118,9 @@
 
     async function requestNotificationPermission() {
         let permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            request_notification.style.visibility = 'hidden';
+        }
     }
 
     const evtSource = new EventSource("{{ url_for("sse.stream", channel="notifications") }}");
