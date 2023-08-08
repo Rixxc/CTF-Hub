@@ -1,5 +1,33 @@
 {% extends "layout/base.html" %}
 {% block content %}
+<script>
+evtSource.addEventListener('message', (event) => {
+    let msg = JSON.parse(event.data);
+    let template = document.createElement('template');
+    template.innerHTML = `
+<div class="card mt-2">
+    <div class="card-content">
+        <div class="content">
+            <div class="columns">
+                <div id="message" class="column" style="word-break: break-all;">
+                </div>
+            </div>
+            <time id="time"></time>
+        </div>
+    </div>
+</div>`
+
+    let message = template.content.getElementById('message');
+    let time = template.content.getElementById('time');
+
+    message.innerText = msg.msg;
+    time.innerText = msg.time;
+
+    let notifications = document.getElementById('notifications');
+    notifications.prepend(template.content);
+});
+</script>
+<div id="notifications">
 {% for notification in notifications %}
 <div class="card mt-2">
     <div class="card-content">
@@ -14,4 +42,5 @@
     </div>
 </div>
 {% endfor %}
+</div>
 {% endblock %}

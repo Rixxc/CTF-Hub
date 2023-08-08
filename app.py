@@ -13,7 +13,7 @@ from requests_oauthlib import OAuth2Session
 
 app = Flask(__name__, static_url_path='/static')
 
-app.debug = 'DEBUG' in os.environ
+app.debug = os.environ.get('DEBUG', '').lower() == 'true'
 
 with open('secret', 'rb') as f:
     app.config['SECRET_KEY'] = f.read()
@@ -332,10 +332,11 @@ def ping():
         notification = Notification(msg)
         db.session.add(notification)
         db.session.commit()
+        print(notification.time)
     except:
         return {'err': 'something went wrong'}, 500
 
-    sse.publish(msg, channel='notifications')
+    sse.publish({'msg': notification.notification, 'time': notification.time.strftime('%a, %d %b %Y %H:%M:%S %Z')}, channel='notifications')
 
     if os.environ['DISCORD_WEBHOOK_URL']:
         # Trigger Discord webhook
@@ -352,7 +353,12 @@ def ping():
 @app.route('/view_notifications', methods=['GET'])
 @is_logged_in
 def view_notifications():
+    def time_to_str(n):
+        n.time = n.time.strftime('%a, %d %b %Y %H:%M:%S %Z')
+        return n
+
     notifications = Notification.query.order_by(Notification.time.desc()).all()
+    notifications = map(lambda n: time_to_str(n), notifications)
     return render_template('view_notifications.html', notifications=notifications)
 
 

@@ -5,20 +5,22 @@
     <title>CTF-Hub</title>
 </head>
 <script type="text/javascript" charset="utf-8">
+    let request_notification = document.getElementById('request_notification');
+    if(Notification.permission !== 'granted') {
+        request_notification.style.visibility = 'visible';
+    }
+
     async function requestNotificationPermission() {
         let permission = await Notification.requestPermission();
     }
 
     const evtSource = new EventSource("{{ url_for("sse.stream", channel="notifications") }}");
-    evtSource.onmessage = (event) => {
+    evtSource.addEventListener('message', (event) => {
         console.log(`message: ${event.data}`);
         const greeting = new Notification('Defcon 2023',{
-            body: event.data
+            body: JSON.parse(event.data).msg
         });
-        if(window.location.pathname === '/view_notifications') {
-            setTimeout(() => {location.reload();}, 5000);
-        }
-    }
+    });
 </script>
 <body>
     <nav class="navbar" role="navigation" aria-label="main navigation">
@@ -56,7 +58,7 @@
             <div class="navbar-end">
                 {% if 'uid' in session %}
                 <div class="navbar-item">
-                    <button class="button navbar-item is-success" onclick="requestNotificationPermission()">Request notification permission</button>
+                    <button id="request_notification" class="button navbar-item is-success" onclick="requestNotificationPermission()" style="visibility: hidden">Request notification permission</button>
                 </div>
                 <div class="navbar-item">
                     <a class="button navbar-item is-danger" href="/logout">
