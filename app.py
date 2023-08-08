@@ -157,7 +157,8 @@ def login():
                 if os.environ["ROLE_ID"]:
                     user_guild = discord.get(API_BASE_URL + f'/users/@me/guilds/{os.environ["GUILD_ID"]}/member').json()
 
-                    if os.environ["ROLE_ID"] in user_guild["roles"]:
+                    roles = set(os.environ["ROLE_ID"].split(','))
+                    if len(roles.intersection(set(user_guild["roles"]))) > 0:
                         allowed = True
                 else:
                     allowed = True
