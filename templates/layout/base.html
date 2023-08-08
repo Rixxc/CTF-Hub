@@ -4,24 +4,6 @@
     <link href="/static/bulma.min.css" rel="stylesheet">
     <title>CTF-Hub</title>
 </head>
-<script type="text/javascript" charset="utf-8">
-    let request_notification = document.getElementById('request_notification');
-    if(Notification.permission !== 'granted') {
-        request_notification.style.visibility = 'visible';
-    }
-
-    async function requestNotificationPermission() {
-        let permission = await Notification.requestPermission();
-    }
-
-    const evtSource = new EventSource("{{ url_for("sse.stream", channel="notifications") }}");
-    evtSource.addEventListener('message', (event) => {
-        console.log(`message: ${event.data}`);
-        const greeting = new Notification('Defcon 2023',{
-            body: JSON.parse(event.data).msg
-        });
-    });
-</script>
 <body>
     <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
@@ -128,5 +110,23 @@
         {% block content %}{% endblock %}
     </section>
 </div>
+<script type="text/javascript" charset="utf-8">
+    let request_notification = document.getElementById("request_notification");
+    if(Notification.permission !== 'granted') {
+        request_notification.style.visibility = 'visible';
+    }
+
+    async function requestNotificationPermission() {
+        let permission = await Notification.requestPermission();
+    }
+
+    const evtSource = new EventSource("{{ url_for("sse.stream", channel="notifications") }}");
+    evtSource.addEventListener('message', (event) => {
+        console.log(`message: ${event.data}`);
+        const greeting = new Notification('Defcon 2023',{
+            body: JSON.parse(event.data).msg
+        });
+    });
+</script>
 </body>
 </html>
